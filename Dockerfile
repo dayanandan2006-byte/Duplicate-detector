@@ -6,6 +6,7 @@ RUN useradd -m -u 1000 user
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    sqlite3 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -14,20 +15,19 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Pre-cache SentenceTransformer model inside the image so it starts instantly
+# Pre-cache SentenceTransformer model inside the image
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
 
-# Copy application files and grant full permissions to user
+# Copy application files and grant permissions
 COPY --chown=user:user . /app
-RUN chmod -R 777 /app
+RUN chmod -R 775 /app
 
 # Switch to non-root user
 USER user
 ENV PORT=7860 \
     PYTHONUNBUFFERED=1
 
-# Expose default Hugging Face Spaces port
 EXPOSE 7860
 
-# Run Uvicorn (binds to $PORT or default 7860 for Hugging Face Spaces, 8000/10000 for Render)
+# Run Uvicorn (binds to $PORT or default 7860)
 CMD ["sh", "-c", "uvicorn server:app --host 0.0.0.0 --port ${PORT:-7860}"]
